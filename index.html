@@ -67,7 +67,7 @@
           measurementId: "G-D128YGCB95"
         };
         
-        // Initialize Firebase (with error handling for demo)
+        // Initialize Firebase
         let database;
         try {
           if (!firebase.apps.length) {
@@ -75,12 +75,12 @@
           }
           database = firebase.database();
         } catch (error) {
-          console.warn("Firebase initialization failed - using local mode:", error);
+          console.error("Firebase initialization failed:", error);
         }
         
         // Inline SVG Icon Components
         const Trophy = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
         );
@@ -142,12 +142,6 @@
             </svg>
         );
 
-        const AlertCircle = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        );
-
         // Main Game Component
         const GISTriviaChallengeGame = () => {
           // Game states
@@ -156,16 +150,13 @@
           const [playerId, setPlayerId] = useState('');
           const [isHost, setIsHost] = useState(false);
           const [roomCode, setRoomCode] = useState('');
-          const [firebaseMode, setFirebaseMode] = useState(false);
-          const [connectionError, setConnectionError] = useState('');
           
-          // Game data (synced with Firebase)
+          // Game data
           const [players, setPlayers] = useState([]);
           const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
           const [timeRemaining, setTimeRemaining] = useState(30);
           const [selectedAnswer, setSelectedAnswer] = useState(null);
           const [showResult, setShowResult] = useState(false);
-          const [playerAnswers, setPlayerAnswers] = useState({});
           
           // Lightning round state
           const [lightningQuestionIndex, setLightningQuestionIndex] = useState(0);
@@ -176,282 +167,48 @@
           const [jeopardyAnswer, setJeopardyAnswer] = useState('');
           const [showJeopardyResult, setShowJeopardyResult] = useState(false);
           const [jeopardySubmitted, setJeopardySubmitted] = useState(false);
-          const [allJeopardyAnswers, setAllJeopardyAnswers] = useState({});
           
           const roomRef = useRef(null);
-          const playersRef = useRef(null);
-          const gameStateRef = useRef(null);
 
-          // Questions data (same as before)
+          // 30 GIS questions
           const questions = [
-            {
-              difficulty: 'Easy',
-              question: 'What does GIS stand for?',
-              options: ['Geographic Information System', 'Global Internet Service', 'Geological Inspection Software', 'Graphical Interface System'],
-              correct: 0,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'Which company created ArcGIS?',
-              options: ['Google', 'Microsoft', 'Esri', 'Oracle'],
-              correct: 2,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'What type of GIS data represents continuous surfaces like elevation?',
-              options: ['Vector data', 'Raster data', 'Tabular data', 'Network data'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'What does GPS stand for?',
-              options: ['Global Positioning System', 'Geographic Projection Service', 'General Purpose Software', 'Geodetic Point System'],
-              correct: 0,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'Which file format is commonly used for vector GIS data?',
-              options: ['.jpg', '.shp', '.mp3', '.doc'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'What is a feature class in GIS?',
-              options: ['A type of map projection', 'A collection of geographic features with the same geometry type', 'A Python programming class', 'A map scale measurement'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'Which geometry type is used to represent roads in a GIS?',
-              options: ['Point', 'Line (Polyline)', 'Polygon', 'Raster'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'What is the main purpose of a map legend?',
-              options: ['Show the map author', 'Explain map symbols and colors', 'Display coordinates', 'Set the map scale'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'Which ArcGIS product is cloud-based?',
-              options: ['ArcGIS Pro', 'ArcGIS Online', 'ArcCatalog', 'ArcMap'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Easy',
-              question: 'What does a larger map scale (e.g., 1:1,000) show compared to a smaller scale (e.g., 1:100,000)?',
-              options: ['Less detail, larger area', 'More detail, smaller area', 'The same amount of detail', 'More detail, larger area'],
-              correct: 1,
-              points: 100,
-              penalty: -25
-            },
-            {
-              difficulty: 'Medium',
-              question: 'Which spatial analysis tool creates a zone of a specified distance around features?',
-              options: ['Clip', 'Union', 'Buffer', 'Dissolve'],
-              correct: 2,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'What is the EPSG code for the WGS84 geographic coordinate system?',
-              options: ['EPSG:3857', 'EPSG:4326', 'EPSG:2163', 'EPSG:3395'],
-              correct: 1,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'Which geoprocessing tool would you use to find features that overlap between two layers?',
-              options: ['Union', 'Intersect', 'Merge', 'Append'],
-              correct: 1,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'What is a geodatabase?',
-              options: ['A text file with coordinates', 'A database designed to store, query, and manage spatial and non-spatial data', 'A spreadsheet for geographic data', 'A map projection method'],
-              correct: 1,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'Which ArcGIS tool is used for optimizing routes and finding the shortest path?',
-              options: ['Spatial Join', 'Network Analyst', 'Near Tool', 'Geocoding Tool'],
-              correct: 1,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'What does LiDAR stand for?',
-              options: ['Light Detection and Ranging', 'Linear Data Recording', 'Location Information Database', 'Land Identification and Research'],
-              correct: 0,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'Which programming language is most commonly used with ArcGIS for automation?',
-              options: ['Java', 'C++', 'Python', 'Ruby'],
-              correct: 2,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'What is the primary purpose of ArcGIS Field Maps?',
-              options: ['Creating detailed cartographic layouts', 'Running Python scripts', 'Mobile data collection and field updates', 'Publishing web services'],
-              correct: 2,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'Which projection is commonly used for web mapping applications like Google Maps?',
-              options: ['Web Mercator (EPSG:3857)', 'Robinson', 'Albers Equal Area', 'Geographic WGS84'],
-              correct: 0,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Medium',
-              question: 'What is the purpose of a spatial join in GIS?',
-              options: ['To merge attribute tables', 'To combine features based on spatial relationships', 'To create new geometry', 'To change coordinate systems'],
-              correct: 1,
-              points: 200,
-              penalty: -50
-            },
-            {
-              difficulty: 'Hard',
-              question: 'Which Python package is essential for ArcGIS Pro scripting and automation?',
-              options: ['geopandas', 'arcpy', 'shapely', 'fiona'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'What spatial relationship test determines if one feature completely contains another feature?',
-              options: ['Intersects', 'Within', 'Contains', 'Touches'],
-              correct: 2,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'Which geoprocessing tool merges adjacent features with the same attribute values into single features?',
-              options: ['Merge', 'Append', 'Dissolve', 'Union'],
-              correct: 2,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'What is the State Plane Coordinate System optimized for?',
-              options: ['Global mapping', 'Accuracy within individual US states', 'Polar regions', 'Ocean navigation'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'In ArcGIS Pro, what does the Model Builder tool allow you to do?',
-              options: ['Create 3D building models', 'Design and automate geoprocessing workflows', 'Build network datasets', 'Model terrain surfaces'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'What is topology in GIS?',
-              options: ['A type of map projection', 'Rules that define spatial relationships between features', 'Elevation data format', 'A coordinate system'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'Which analysis method would you use to determine the best location for a new facility based on multiple criteria?',
-              options: ['Hot Spot Analysis', 'Suitability Analysis', 'Cluster Analysis', 'Trend Analysis'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'What is the typical spatial resolution of Landsat 8 multispectral bands?',
-              options: ['10 meters', '15 meters', '30 meters', '60 meters'],
-              correct: 2,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'In utility GIS, what does a geometric network represent?',
-              options: ['Survey measurements', 'Connected infrastructure like pipes and wires', 'Satellite imagery', 'Administrative boundaries'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            },
-            {
-              difficulty: 'Hard',
-              question: 'What is the Haversine formula used for in GIS?',
-              options: ['Calculating map scale', 'Computing great-circle distance between latitude/longitude points', 'Converting coordinate systems', 'Determining elevation'],
-              correct: 1,
-              points: 300,
-              penalty: -75
-            }
+            { difficulty: 'Easy', question: 'What does GIS stand for?', options: ['Geographic Information System', 'Global Internet Service', 'Geological Inspection Software', 'Graphical Interface System'], correct: 0, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'Which company created ArcGIS?', options: ['Google', 'Microsoft', 'Esri', 'Oracle'], correct: 2, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'What type of GIS data represents continuous surfaces like elevation?', options: ['Vector data', 'Raster data', 'Tabular data', 'Network data'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'What does GPS stand for?', options: ['Global Positioning System', 'Geographic Projection Service', 'General Purpose Software', 'Geodetic Point System'], correct: 0, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'Which file format is commonly used for vector GIS data?', options: ['.jpg', '.shp', '.mp3', '.doc'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'What is a feature class in GIS?', options: ['A type of map projection', 'A collection of geographic features with the same geometry type', 'A Python programming class', 'A map scale measurement'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'Which geometry type is used to represent roads in a GIS?', options: ['Point', 'Line (Polyline)', 'Polygon', 'Raster'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'What is the main purpose of a map legend?', options: ['Show the map author', 'Explain map symbols and colors', 'Display coordinates', 'Set the map scale'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'Which ArcGIS product is cloud-based?', options: ['ArcGIS Pro', 'ArcGIS Online', 'ArcCatalog', 'ArcMap'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Easy', question: 'What does a larger map scale (e.g., 1:1,000) show compared to a smaller scale (e.g., 1:100,000)?', options: ['Less detail, larger area', 'More detail, smaller area', 'The same amount of detail', 'More detail, larger area'], correct: 1, points: 100, penalty: -25 },
+            { difficulty: 'Medium', question: 'Which spatial analysis tool creates a zone of a specified distance around features?', options: ['Clip', 'Union', 'Buffer', 'Dissolve'], correct: 2, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'What is the EPSG code for the WGS84 geographic coordinate system?', options: ['EPSG:3857', 'EPSG:4326', 'EPSG:2163', 'EPSG:3395'], correct: 1, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'Which geoprocessing tool would you use to find features that overlap between two layers?', options: ['Union', 'Intersect', 'Merge', 'Append'], correct: 1, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'What is a geodatabase?', options: ['A text file with coordinates', 'A database designed to store, query, and manage spatial and non-spatial data', 'A spreadsheet for geographic data', 'A map projection method'], correct: 1, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'Which ArcGIS tool is used for optimizing routes and finding the shortest path?', options: ['Spatial Join', 'Network Analyst', 'Near Tool', 'Geocoding Tool'], correct: 1, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'What does LiDAR stand for?', options: ['Light Detection and Ranging', 'Linear Data Recording', 'Location Information Database', 'Land Identification and Research'], correct: 0, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'Which programming language is most commonly used with ArcGIS for automation?', options: ['Java', 'C++', 'Python', 'Ruby'], correct: 2, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'What is the primary purpose of ArcGIS Field Maps?', options: ['Creating detailed cartographic layouts', 'Running Python scripts', 'Mobile data collection and field updates', 'Publishing web services'], correct: 2, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'Which projection is commonly used for web mapping applications like Google Maps?', options: ['Web Mercator (EPSG:3857)', 'Robinson', 'Albers Equal Area', 'Geographic WGS84'], correct: 0, points: 200, penalty: -50 },
+            { difficulty: 'Medium', question: 'What is the purpose of a spatial join in GIS?', options: ['To merge attribute tables', 'To combine features based on spatial relationships', 'To create new geometry', 'To change coordinate systems'], correct: 1, points: 200, penalty: -50 },
+            { difficulty: 'Hard', question: 'Which Python package is essential for ArcGIS Pro scripting and automation?', options: ['geopandas', 'arcpy', 'shapely', 'fiona'], correct: 1, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'What spatial relationship test determines if one feature completely contains another feature?', options: ['Intersects', 'Within', 'Contains', 'Touches'], correct: 2, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'Which geoprocessing tool merges adjacent features with the same attribute values into single features?', options: ['Merge', 'Append', 'Dissolve', 'Union'], correct: 2, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'What is the State Plane Coordinate System optimized for?', options: ['Global mapping', 'Accuracy within individual US states', 'Polar regions', 'Ocean navigation'], correct: 1, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'In ArcGIS Pro, what does the Model Builder tool allow you to do?', options: ['Create 3D building models', 'Design and automate geoprocessing workflows', 'Build network datasets', 'Model terrain surfaces'], correct: 1, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'What is topology in GIS?', options: ['A type of map projection', 'Rules that define spatial relationships between features', 'Elevation data format', 'A coordinate system'], correct: 1, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'Which analysis method would you use to determine the best location for a new facility based on multiple criteria?', options: ['Hot Spot Analysis', 'Suitability Analysis', 'Cluster Analysis', 'Trend Analysis'], correct: 1, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'What is the typical spatial resolution of Landsat 8 multispectral bands?', options: ['10 meters', '15 meters', '30 meters', '60 meters'], correct: 2, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'In utility GIS, what does a geometric network represent?', options: ['Survey measurements', 'Connected infrastructure like pipes and wires', 'Satellite imagery', 'Administrative boundaries'], correct: 1, points: 300, penalty: -75 },
+            { difficulty: 'Hard', question: 'What is the Haversine formula used for in GIS?', options: ['Calculating map scale', 'Computing great-circle distance between latitude/longitude points', 'Converting coordinate systems', 'Determining elevation'], correct: 1, points: 300, penalty: -75 }
           ];
 
           const lightningQuestions = [
-            {
-              question: 'Where is Insight Global HQ located?',
-              answer: 'Atlanta, GA',
-              acceptableAnswers: ['atlanta', 'atlanta ga', 'atlanta, ga', 'atlanta georgia'],
-              points: 500
-            },
-            {
-              question: 'Who is the GIS Program Director at Insight Global?',
-              answer: 'Justyna Grinholc',
-              acceptableAnswers: ['justyna grinholc', 'justyna', 'grinholc'],
-              points: 500
-            },
-            {
-              question: 'Where are the other US Evergreen Delivery Centers? (Name all locations)',
-              answer: 'Omaha (Nebraska), San Ramon (California), Bellevue (Washington) & Columbus (Ohio)',
-              acceptableAnswers: ['omaha san ramon bellevue columbus', 'omaha, san ramon, bellevue, columbus'],
-              points: 500,
-              hint: 'Nebraska, California, Washington, Ohio'
-            },
-            {
-              question: 'How many members comprise the GIS team under the AES Division at Insight Global?',
-              answer: '68',
-              acceptableAnswers: ['68', 'sixty-eight', 'sixty eight'],
-              points: 500
-            }
+            { question: 'Where is Insight Global HQ located?', answer: 'Atlanta, GA', acceptableAnswers: ['atlanta', 'atlanta ga', 'atlanta, ga', 'atlanta georgia'], points: 500 },
+            { question: 'Who is the GIS Program Director at Insight Global?', answer: 'Justyna Grinholc', acceptableAnswers: ['justyna grinholc', 'justyna', 'grinholc'], points: 500 },
+            { question: 'Where are the other US Evergreen Delivery Centers? (Name all locations)', answer: 'Omaha (Nebraska), San Ramon (California), Bellevue (Washington) & Columbus (Ohio)', acceptableAnswers: ['omaha san ramon bellevue columbus', 'omaha, san ramon, bellevue, columbus'], points: 500, hint: 'Nebraska, California, Washington, Ohio' },
+            { question: 'How many members comprise the GIS team under the AES Division at Insight Global?', answer: '68', acceptableAnswers: ['68', 'sixty-eight', 'sixty eight'], points: 500 }
           ];
 
           const finalJeopardyQuestion = {
@@ -461,22 +218,11 @@
             acceptableAnswers: ['suitability analysis', 'suitability', 'multi-criteria decision analysis', 'mcda', 'multi criteria analysis', 'weighted overlay analysis', 'weighted overlay']
           };
 
-          // Check if Firebase is available
-          useEffect(() => {
-            if (database) {
-              setFirebaseMode(true);
-              setConnectionError('');
-            } else {
-              setFirebaseMode(false);
-              setConnectionError('Running in local mode - multiplayer disabled. Please check Firebase configuration.');
-            }
-          }, []);
-
           // Firebase sync for players
           useEffect(() => {
             if (!database || !roomCode) return;
 
-            playersRef.current = database.ref(`rooms/${roomCode}/players`);
+            const playersRef = database.ref(`rooms/${roomCode}/players`);
             
             const handlePlayersChange = (snapshot) => {
               const playersData = snapshot.val();
@@ -489,25 +235,20 @@
               }
             };
 
-            playersRef.current.on('value', handlePlayersChange);
+            playersRef.on('value', handlePlayersChange);
 
-            return () => {
-              if (playersRef.current) {
-                playersRef.current.off('value', handlePlayersChange);
-              }
-            };
+            return () => playersRef.off('value', handlePlayersChange);
           }, [roomCode]);
 
-          // Firebase sync for game state
+          // Firebase sync for game state (non-hosts only)
           useEffect(() => {
-            if (!database || !roomCode) return;
+            if (!database || !roomCode || isHost) return;
 
-            gameStateRef.current = database.ref(`rooms/${roomCode}/gameState`);
+            const gameStateRef = database.ref(`rooms/${roomCode}/gameState`);
             
             const handleGameStateChange = (snapshot) => {
               const state = snapshot.val();
-              if (state && !isHost) {
-                // Only non-hosts should update from Firebase
+              if (state) {
                 if (state.currentState) setGameState(state.currentState);
                 if (state.currentQuestionIndex !== undefined) setCurrentQuestionIndex(state.currentQuestionIndex);
                 if (state.showResult !== undefined) setShowResult(state.showResult);
@@ -516,13 +257,9 @@
               }
             };
 
-            gameStateRef.current.on('value', handleGameStateChange);
+            gameStateRef.on('value', handleGameStateChange);
 
-            return () => {
-              if (gameStateRef.current) {
-                gameStateRef.current.off('value', handleGameStateChange);
-              }
-            };
+            return () => gameStateRef.off('value', handleGameStateChange);
           }, [roomCode, isHost]);
 
           // Host updates game state to Firebase
@@ -538,129 +275,11 @@
             });
           }, [gameState, currentQuestionIndex, showResult, lightningQuestionIndex, showJeopardyResult, roomCode, isHost]);
 
-          const generateRoomCode = () => {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
-          };
-
-          const createRoom = async () => {
-            if (!firebaseMode) {
-              alert('Multiplayer is currently unavailable. Please check your internet connection or Firebase configuration.');
-              return;
-            }
-
-            const code = generateRoomCode();
-            const id = Date.now().toString();
-            
-            setRoomCode(code);
-            setPlayerId(id);
-            setIsHost(true);
-            
-            try {
-              await database.ref(`rooms/${code}/players/${id}`).set({
-                name: playerName,
-                score: 0,
-                isHost: true
-              });
-              
-              await database.ref(`rooms/${code}/gameState`).set({
-                currentState: 'lobby',
-                currentQuestionIndex: 0,
-                showResult: false
-              });
-            } catch (error) {
-              console.error('Error creating room:', error);
-              alert('Failed to create room. Please try again.');
-            }
-          };
-
-          const joinRoom = async () => {
-            if (!firebaseMode) {
-              alert('Multiplayer is currently unavailable. Please check your internet connection or Firebase configuration.');
-              return;
-            }
-
-            const code = prompt('Enter room code:');
-            if (!code) return;
-            
-            const id = Date.now().toString();
-            setPlayerId(id);
-            setIsHost(false);
-            setRoomCode(code.toUpperCase());
-            
-            try {
-              // Check if room exists
-              const roomSnapshot = await database.ref(`rooms/${code.toUpperCase()}`).once('value');
-              if (!roomSnapshot.exists()) {
-                alert('Room not found! Please check the room code.');
-                return;
-              }
-              
-              await database.ref(`rooms/${code.toUpperCase()}/players/${id}`).set({
-                name: playerName,
-                score: 0,
-                isHost: false
-              });
-            } catch (error) {
-              console.error('Error joining room:', error);
-              alert('Failed to join room. Please try again.');
-            }
-          };
-
-          const startGame = () => {
-            if (!isHost) return;
-            
-            setGameState('playing');
-            setCurrentQuestionIndex(0);
-            setTimeRemaining(30);
-            setSelectedAnswer(null);
-            setShowResult(false);
-            setPlayerAnswers({});
-          };
-
-          const updatePlayerScore = async (playerId, scoreChange) => {
-            if (!database || !roomCode) return;
-            
-            try {
-              const playerRef = database.ref(`rooms/${roomCode}/players/${playerId}`);
-              const snapshot = await playerRef.once('value');
-              const currentScore = snapshot.val()?.score || 0;
-              await playerRef.update({
-                score: Math.max(0, currentScore + scoreChange)
-              });
-            } catch (error) {
-              console.error('Error updating score:', error);
-            }
-          };
-
-          const selectAnswer = (index) => {
-            if (showResult || selectedAnswer !== null) return;
-            
-            setSelectedAnswer(index);
-            const currentQuestion = questions[currentQuestionIndex];
-            const isCorrect = index === currentQuestion.correct;
-            const points = isCorrect ? currentQuestion.points : currentQuestion.penalty;
-
-            updatePlayerScore(playerId, points);
-
-            setPlayerAnswers(prev => ({
-              ...prev,
-              [playerId]: { answer: index, correct: isCorrect, points }
-            }));
-
-            setShowResult(true);
-          };
-
           // Timer effects
           useEffect(() => {
             if (gameState === 'playing' && !showResult && timeRemaining > 0) {
               const timer = setInterval(() => {
-                setTimeRemaining(prev => {
-                  if (prev <= 1) {
-                    setShowResult(true);
-                    return 0;
-                  }
-                  return prev - 1;
-                });
+                setTimeRemaining(prev => prev - 1);
               }, 1000);
               return () => clearInterval(timer);
             }
@@ -669,17 +288,85 @@
           useEffect(() => {
             if (gameState === 'lightning' && !showResult && timeRemaining > 0) {
               const timer = setInterval(() => {
-                setTimeRemaining(prev => {
-                  if (prev <= 1) {
-                    setShowResult(true);
-                    return 0;
-                  }
-                  return prev - 1;
-                });
+                setTimeRemaining(prev => prev - 1);
               }, 1000);
               return () => clearInterval(timer);
             }
-          }, [gameState, showResult, timeRemaining, lightningQuestionIndex]);
+          }, [gameState, showResult, timeRemaining]);
+
+          const generateRoomCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
+          const createRoom = async () => {
+            const code = generateRoomCode();
+            const id = Date.now().toString();
+            
+            setRoomCode(code);
+            setPlayerId(id);
+            setIsHost(true);
+            
+            await database.ref(`rooms/${code}/players/${id}`).set({
+              name: playerName,
+              score: 0,
+              isHost: true
+            });
+            
+            await database.ref(`rooms/${code}/gameState`).set({
+              currentState: 'lobby',
+              currentQuestionIndex: 0,
+              showResult: false
+            });
+          };
+
+          const joinRoom = async () => {
+            const code = prompt('Enter room code:');
+            if (!code) return;
+            
+            const id = Date.now().toString();
+            setPlayerId(id);
+            setIsHost(false);
+            setRoomCode(code.toUpperCase());
+            
+            const roomSnapshot = await database.ref(`rooms/${code.toUpperCase()}`).once('value');
+            if (!roomSnapshot.exists()) {
+              alert('Room not found! Please check the room code.');
+              return;
+            }
+            
+            await database.ref(`rooms/${code.toUpperCase()}/players/${id}`).set({
+              name: playerName,
+              score: 0,
+              isHost: false
+            });
+          };
+
+          const startGame = () => {
+            if (!isHost) return;
+            setGameState('playing');
+            setCurrentQuestionIndex(0);
+            setTimeRemaining(30);
+            setSelectedAnswer(null);
+            setShowResult(false);
+          };
+
+          const updatePlayerScore = async (playerId, scoreChange) => {
+            if (!database || !roomCode) return;
+            
+            const playerRef = database.ref(`rooms/${roomCode}/players/${playerId}`);
+            const snapshot = await playerRef.once('value');
+            const currentScore = snapshot.val()?.score || 0;
+            await playerRef.update({ score: Math.max(0, currentScore + scoreChange) });
+          };
+
+          const selectAnswer = (index) => {
+            if (selectedAnswer !== null) return;
+            
+            setSelectedAnswer(index);
+            const currentQuestion = questions[currentQuestionIndex];
+            const isCorrect = index === currentQuestion.correct;
+            const points = isCorrect ? currentQuestion.points : currentQuestion.penalty;
+
+            updatePlayerScore(playerId, points);
+          };
 
           const nextQuestion = () => {
             if (!isHost) return;
@@ -689,7 +376,6 @@
               setTimeRemaining(30);
               setSelectedAnswer(null);
               setShowResult(false);
-              setPlayerAnswers({});
               setGameState('playing');
             } else {
               startLightningRound();
@@ -698,7 +384,6 @@
 
           const startLightningRound = () => {
             if (!isHost) return;
-            
             setGameState('lightning');
             setLightningQuestionIndex(0);
             setLightningAnswer('');
@@ -712,10 +397,8 @@
             const isCorrect = currentLightning.acceptableAnswers.some(acceptable => 
               normalizedAnswer.includes(acceptable) || acceptable.includes(normalizedAnswer)
             );
-
             const points = isCorrect ? currentLightning.points : -100;
             updatePlayerScore(playerId, points);
-
             setShowResult(true);
           };
 
@@ -734,13 +417,11 @@
 
           const startFinalJeopardy = () => {
             if (!isHost) return;
-            
             setGameState('final-jeopardy');
             setJeopardyWager(0);
             setJeopardyAnswer('');
             setJeopardySubmitted(false);
             setShowJeopardyResult(false);
-            setAllJeopardyAnswers({});
           };
 
           const submitFinalJeopardy = async () => {
@@ -749,19 +430,16 @@
               alert('Invalid wager! Must be between 0 and your current score.');
               return;
             }
-
             setJeopardySubmitted(true);
             
-            if (database && roomCode) {
-              await database.ref(`rooms/${roomCode}/jeopardyAnswers/${playerId}`).set({
-                wager: jeopardyWager,
-                answer: jeopardyAnswer
-              });
-            }
+            await database.ref(`rooms/${roomCode}/jeopardyAnswers/${playerId}`).set({
+              wager: jeopardyWager,
+              answer: jeopardyAnswer
+            });
           };
 
           const revealFinalJeopardy = async () => {
-            if (!isHost || !database || !roomCode) return;
+            if (!isHost) return;
             
             const answersSnapshot = await database.ref(`rooms/${roomCode}/jeopardyAnswers`).once('value');
             const answers = answersSnapshot.val() || {};
@@ -772,7 +450,6 @@
               const isCorrect = finalJeopardyQuestion.acceptableAnswers.some(acceptable => 
                 normalizedAnswer.includes(acceptable) || acceptable.includes(normalizedAnswer)
               );
-
               const scoreChange = isCorrect ? playerJeopardy.wager : -playerJeopardy.wager;
               await updatePlayerScore(pid, scoreChange);
               
@@ -780,7 +457,6 @@
                 jeopardyResult: { correct: isCorrect, wager: playerJeopardy.wager, answer: playerJeopardy.answer }
               });
             }
-
             setShowJeopardyResult(true);
           };
 
@@ -795,15 +471,12 @@
           };
 
           const resetGame = async () => {
-            if (!isHost || !database || !roomCode) return;
+            if (!isHost) return;
             
             setGameState('lobby');
             setCurrentQuestionIndex(0);
             setLightningQuestionIndex(0);
-            setPlayerAnswers({});
-            setAllJeopardyAnswers({});
             
-            // Reset all player scores in Firebase
             const playersSnapshot = await database.ref(`rooms/${roomCode}/players`).once('value');
             const playersData = playersSnapshot.val();
             
@@ -815,47 +488,11 @@
             }
           };
 
-          const getSortedPlayers = () => {
-            return [...players].sort((a, b) => b.score - a.score);
-          };
+          const getSortedPlayers = () => [...players].sort((a, b) => b.score - a.score);
 
           const currentQuestion = questions[currentQuestionIndex];
           const currentLightning = lightningQuestions[lightningQuestionIndex];
 
-          // CONNECTION ERROR BANNER
-          if (connectionError) {
-            return (
-              <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-orange-900 p-8 flex items-center justify-center">
-                <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-2xl p-8">
-                  <div className="text-center mb-6">
-                    <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-4" />
-                    <h1 className="text-4xl font-bold text-gray-800 mb-4">Firebase Setup Required</h1>
-                    <p className="text-lg text-gray-600 mb-6">{connectionError}</p>
-                  </div>
-                  
-                  <div className="bg-blue-50 rounded-lg p-6 mb-6">
-                    <h3 className="font-bold text-lg text-gray-800 mb-3">To enable multiplayer:</h3>
-                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                      <li>Go to <a href="https://console.firebase.google.com" target="_blank" className="text-blue-600 underline">Firebase Console</a></li>
-                      <li>Create a new project (free)</li>
-                      <li>Enable Realtime Database</li>
-                      <li>Copy your configuration</li>
-                      <li>Replace the firebaseConfig in the HTML file</li>
-                    </ol>
-                  </div>
-                  
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-600 transition-all"
-                  >
-                    Retry Connection
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          // Rest of the game screens remain the same as the previous version
           // LOBBY SCREEN
           if (gameState === 'lobby') {
             return (
@@ -868,9 +505,7 @@
                     <h1 className="text-6xl font-bold text-white mb-2">GIS Trivia Challenge</h1>
                     <p className="text-2xl text-blue-200">Insight Global • Evergreen GIS Team</p>
                     <p className="text-lg text-blue-300 mt-4">30 Questions • Lightning Round • Final Jeopardy</p>
-                    {firebaseMode && (
-                      <p className="text-sm text-green-300 mt-2">✓ Multiplayer Enabled</p>
-                    )}
+                    <p className="text-sm text-green-300 mt-2">✓ Multiplayer Enabled</p>
                   </div>
 
                   <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
@@ -962,11 +597,7 @@
             );
           }
 
-          // All other game screens (playing, lightning, final-jeopardy, scoreboard, finished)
-          // remain exactly the same as before...
-          // For brevity, I'll include just the key playing screen here
-
-          // PLAYING SCREEN  
+          // PLAYING SCREEN
           if (gameState === 'playing') {
             return (
               <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
@@ -1033,7 +664,7 @@
                           <button
                             key={index}
                             onClick={() => selectAnswer(index)}
-                            disabled={showResult || selectedAnswer !== null}
+                            disabled={selectedAnswer !== null}
                             className={`p-4 rounded-lg border-2 text-left font-medium transition-all ${
                               showCorrectAnswer
                                 ? 'bg-green-100 border-green-500 text-green-800'
@@ -1042,7 +673,7 @@
                                 : isSelected
                                 ? 'bg-blue-100 border-blue-500 text-blue-800'
                                 : 'bg-gray-50 border-gray-300 text-gray-800 hover:bg-gray-100'
-                            } ${showResult || selectedAnswer !== null ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                            } ${selectedAnswer !== null ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             <div className="flex items-center justify-between">
                               <span>{option}</span>
@@ -1091,9 +722,377 @@
             );
           }
 
-          // Include all other screens (lightning, final-jeopardy, scoreboard, finished) here
-          // They remain the same as before
-          return <div>Loading...</div>;
+          // SCOREBOARD SCREEN
+          if (gameState === 'scoreboard') {
+            const sortedPlayers = getSortedPlayers();
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+                <div className="max-w-4xl mx-auto">
+                  <div className="text-center mb-8">
+                    <h1 className="text-5xl font-bold text-white mb-4">📊 Live Scoreboard</h1>
+                    <p className="text-2xl text-blue-200">
+                      Question {currentQuestionIndex + 1} of {questions.length} Complete
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+                    <div className="space-y-3">
+                      {sortedPlayers.map((player, idx) => (
+                        <div
+                          key={player.id}
+                          className={`flex items-center justify-between p-4 rounded-lg ${
+                            idx === 0 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400' :
+                            idx === 1 ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-400' :
+                            idx === 2 ? 'bg-gradient-to-r from-orange-100 to-orange-50 border-2 border-orange-400' :
+                            'bg-gray-50 border-2 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                              idx === 0 ? 'bg-yellow-400 text-white' :
+                              idx === 1 ? 'bg-gray-300 text-white' :
+                              idx === 2 ? 'bg-orange-400 text-white' :
+                              'bg-gray-200 text-gray-600'
+                            }`}>
+                              {idx + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800 text-lg">{player.name}</p>
+                              {idx < 3 && (
+                                <p className="text-sm text-gray-600">
+                                  {idx === 0 ? '🥇 First Place' : idx === 1 ? '🥈 Second Place' : '🥉 Third Place'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-gray-800">{player.score}</p>
+                            <p className="text-sm text-gray-600">points</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {isHost && (
+                    <button
+                      onClick={() => setGameState('playing')}
+                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+                    >
+                      Continue to Next Question ➡️
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          // LIGHTNING ROUND SCREEN
+          if (gameState === 'lightning') {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-yellow-900 via-orange-900 to-red-900 p-8">
+                <div className="max-w-4xl mx-auto">
+                  <div className="text-center mb-8">
+                    <Zap className="w-20 h-20 text-yellow-300 mx-auto mb-4 animate-pulse" />
+                    <h1 className="text-5xl font-bold text-white mb-2">⚡ LIGHTNING ROUND ⚡</h1>
+                    <p className="text-2xl text-yellow-200">Question {lightningQuestionIndex + 1} of 4</p>
+                    <p className="text-lg text-orange-200 mt-2">500 points • Type your answer!</p>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+                    <div className="mb-6 flex justify-center">
+                      <div className={`flex items-center px-6 py-3 rounded-lg ${
+                        timeRemaining <= 5 ? 'bg-red-100' : 'bg-yellow-100'
+                      }`}>
+                        <Clock className={`w-6 h-6 mr-2 ${
+                          timeRemaining <= 5 ? 'text-red-600' : 'text-yellow-600'
+                        }`} />
+                        <span className={`text-3xl font-bold ${
+                          timeRemaining <= 5 ? 'text-red-600' : 'text-yellow-600'
+                        }`}>
+                          {timeRemaining}s
+                        </span>
+                      </div>
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                      {currentLightning.question}
+                    </h2>
+
+                    {currentLightning.hint && (
+                      <p className="text-center text-gray-600 mb-4 italic">
+                        Hint: {currentLightning.hint}
+                      </p>
+                    )}
+
+                    {!showResult ? (
+                      <div className="space-y-4">
+                        <input
+                          type="text"
+                          value={lightningAnswer}
+                          onChange={(e) => setLightningAnswer(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && submitLightningAnswer()}
+                          placeholder="Type your answer here..."
+                          className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none text-lg"
+                          autoFocus
+                        />
+                        <button
+                          onClick={submitLightningAnswer}
+                          disabled={!lightningAnswer.trim()}
+                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 transition-all"
+                        >
+                          Submit Answer 🚀
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 rounded-lg p-6">
+                          <p className="text-lg font-bold text-gray-800 mb-2">Correct Answer:</p>
+                          <p className="text-xl text-blue-600">{currentLightning.answer}</p>
+                        </div>
+                        
+                        {isHost && (
+                          <button
+                            onClick={lightningQuestionIndex < lightningQuestions.length - 1 ? nextLightningQuestion : startFinalJeopardy}
+                            className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+                          >
+                            {lightningQuestionIndex < lightningQuestions.length - 1 ? 'Next Question ⚡' : 'Final Jeopardy 🎯'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-yellow-800 bg-opacity-50 rounded-lg p-4 text-white text-center">
+                    <p className="text-lg">Current Score: <strong>{players.find(p => p.id === playerId)?.score || 0}</strong> points</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // FINAL JEOPARDY SCREEN
+          if (gameState === 'final-jeopardy') {
+            const currentPlayer = players.find(p => p.id === playerId);
+            const maxWager = currentPlayer?.score || 0;
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 p-8">
+                <div className="max-w-4xl mx-auto">
+                  <div className="text-center mb-8">
+                    <Crown className="w-20 h-20 text-yellow-300 mx-auto mb-4" />
+                    <h1 className="text-5xl font-bold text-white mb-2">🎯 FINAL JEOPARDY 🎯</h1>
+                    <p className="text-2xl text-purple-200">The Ultimate GIS Challenge</p>
+                  </div>
+
+                  {!showJeopardyResult ? (
+                    <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+                      <div className="mb-6 p-4 bg-purple-50 rounded-lg">
+                        <p className="text-sm text-gray-600 mb-1">Category:</p>
+                        <p className="text-2xl font-bold text-purple-600">{finalJeopardyQuestion.category}</p>
+                      </div>
+
+                      <h2 className="text-xl font-bold text-gray-800 mb-6">
+                        {finalJeopardyQuestion.question}
+                      </h2>
+
+                      {!jeopardySubmitted ? (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              Your Current Score: {maxWager} points
+                            </label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              How much do you want to wager? (0 - {maxWager})
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max={maxWager}
+                              value={jeopardyWager}
+                              onChange={(e) => setJeopardyWager(Math.min(maxWager, Math.max(0, parseInt(e.target.value) || 0)))}
+                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              Your Answer:
+                            </label>
+                            <input
+                              type="text"
+                              value={jeopardyAnswer}
+                              onChange={(e) => setJeopardyAnswer(e.target.value)}
+                              placeholder="Type your answer here..."
+                              className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
+                            />
+                          </div>
+
+                          <button
+                            onClick={submitFinalJeopardy}
+                            disabled={!jeopardyAnswer.trim() || jeopardyWager < 0}
+                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+                          >
+                            Submit Final Answer 🎯
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                          <p className="text-2xl font-bold text-gray-800 mb-2">Answer Submitted!</p>
+                          <p className="text-lg text-gray-600">Wagered: {jeopardyWager} points</p>
+                          <p className="text-sm text-gray-500 mt-4">Waiting for gamemaster to reveal results...</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="bg-white rounded-lg shadow-2xl p-8">
+                        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                          <p className="text-lg font-bold text-gray-800 mb-2">Correct Answer:</p>
+                          <p className="text-xl text-blue-600">{finalJeopardyQuestion.answer}</p>
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-gray-800 mb-4">Results:</h3>
+                        <div className="space-y-3">
+                          {players.map(player => {
+                            const result = player.jeopardyResult;
+                            if (!result) return null;
+
+                            return (
+                              <div
+                                key={player.id}
+                                className={`p-4 rounded-lg border-2 ${
+                                  result.correct
+                                    ? 'bg-green-50 border-green-500'
+                                    : 'bg-red-50 border-red-500'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-bold text-gray-800">{player.name}</p>
+                                    <p className="text-sm text-gray-600">Wagered: {result.wager} points</p>
+                                    <p className="text-sm text-gray-600">Answer: {result.answer}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-2xl font-bold ${
+                                      result.correct ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      {result.correct ? `+${result.wager}` : `-${result.wager}`}
+                                    </p>
+                                    <p className="text-lg font-bold text-gray-800">
+                                      Final: {player.score}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {isHost && (
+                        <button
+                          onClick={finishGame}
+                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-yellow-600 hover:to-orange-600 transition-all"
+                        >
+                          Show Final Results 🏆
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {isHost && !showJeopardyResult && (
+                    <button
+                      onClick={revealFinalJeopardy}
+                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+                    >
+                      Reveal Results 🎭
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          // FINISHED SCREEN
+          if (gameState === 'finished') {
+            const sortedPlayers = getSortedPlayers();
+            const winner = sortedPlayers[0];
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+                <div className="max-w-4xl mx-auto">
+                  <div className="text-center mb-8">
+                    <Trophy className="w-24 h-24 text-yellow-400 mx-auto mb-4 animate-bounce" />
+                    <h1 className="text-6xl font-bold text-white mb-4">🎉 Game Over! 🎉</h1>
+                    <p className="text-3xl text-yellow-300 mb-2">{winner.name} Wins!</p>
+                    <p className="text-xl text-blue-200">Final Score: {winner.score} points</p>
+                    <p className="text-lg text-purple-200 mt-4">Insight Global • Evergreen GIS Team</p>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Final Standings</h2>
+                    <div className="space-y-3">
+                      {sortedPlayers.map((player, idx) => (
+                        <div
+                          key={player.id}
+                          className={`flex items-center justify-between p-4 rounded-lg ${
+                            idx === 0 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400' :
+                            idx === 1 ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-400' :
+                            idx === 2 ? 'bg-gradient-to-r from-orange-100 to-orange-50 border-2 border-orange-400' :
+                            'bg-gray-50 border-2 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                              idx === 0 ? 'bg-yellow-400 text-white' :
+                              idx === 1 ? 'bg-gray-300 text-white' :
+                              idx === 2 ? 'bg-orange-400 text-white' :
+                              'bg-gray-200 text-gray-600'
+                            }`}>
+                              {idx + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800 text-lg">{player.name}</p>
+                              {idx < 3 && (
+                                <p className="text-sm text-gray-600">
+                                  {idx === 0 ? '🥇 Gold Medal' : idx === 1 ? '🥈 Silver Medal' : '🥉 Bronze Medal'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-gray-800">{player.score}</p>
+                            <p className="text-sm text-gray-600">points</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {isHost && (
+                    <button
+                      onClick={resetGame}
+                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+                    >
+                      Play Again 🔄
+                    </button>
+                  )}
+
+                  <div className="bg-blue-800 bg-opacity-50 rounded-lg p-6 text-white text-center mt-6">
+                    <p className="text-xl mb-2">Thank you for playing! 🌍</p>
+                    <p className="text-blue-200">Insight Global Evergreen GIS Team</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+            <div className="text-white text-2xl">Loading...</div>
+          </div>;
         };
 
         // Render the app
