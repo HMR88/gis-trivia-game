@@ -307,15 +307,24 @@
             }
           }, [gameState, showResult, timeRemaining]);
 
-          // Reset selected answer when question changes (for all players)
-          useEffect(() => {
-            setSelectedAnswer(null);
-          }, [currentQuestionIndex]);
+          // Reset selectedAnswer and timer for non-hosts when question changes
+		  useEffect(() => {
+  			if (!isHost && gameState === 'playing') {
+    		  setSelectedAnswer(null);
+    		  setTimeRemaining(30);
+    		  setShowResult(false);
+ 		    }
+		  }, [currentQuestionIndex, gameState, isHost]);
+
 
           // Reset lightning answer when lightning question changes
           useEffect(() => {
-            setLightningAnswer('');
-          }, [lightningQuestionIndex]);
+		    if (!isHost && gameState === 'lightning') {
+              setLightningAnswer('');
+              setTimeRemaining(10);
+              setShowResult(false);
+            }
+          }, [lightningQuestionIndex, gameState, isHost]);
 
           const generateRoomCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
