@@ -167,6 +167,8 @@
           const [jeopardyAnswer, setJeopardyAnswer] = useState('');
           const [showJeopardyResult, setShowJeopardyResult] = useState(false);
           const [jeopardySubmitted, setJeopardySubmitted] = useState(false);
+          const [jeopardyQuestionRevealed, setJeopardyQuestionRevealed] = useState(false);
+          const [jeopardyWagerLocked, setJeopardyWagerLocked] = useState(false);
           
           const roomRef = useRef(null);
 
@@ -209,7 +211,7 @@
             { question: 'Who is the GIS Program Director at Insight Global?', answer: 'Justyna Grinholc', acceptableAnswers: ['justyna grinholc', 'justyna', 'grinholc'], points: 500 },
             { question: 'Where are the other US Evergreen Delivery Centers? (Name all locations)', answer: 'Omaha (Nebraska), San Ramon (California), Bellevue (Washington) & Columbus (Ohio)', acceptableAnswers: ['omaha san ramon bellevue columbus', 'omaha, san ramon, bellevue, columbus'], points: 500, hint: 'Nebraska, California, Washington, Ohio' },
             { question: 'How many members comprise the GIS team under the AES Division at Insight Global?', answer: '68', acceptableAnswers: ['68', 'sixty-eight', 'sixty eight'], points: 500 },
-            { question: 'Who is our AGOL Admin and who is our Solutions Architect?', answer: 'Rebecca Spring & Matthew Gigax', acceptableAnswers: ['rebecca spring matthew gigax', 'rebecca spring and matthew gigax', 'rebecca matthew', 'spring gigax', 'rebecca gigax matthew spring', 'matthew gigax rebecca spring'], points: 500 }
+            { question: 'Who is our AGOL Admin and who is our Solutions Architect?', answer: 'Rebecca Spring & Matthew Gigax', acceptableAnswers: ['rebecca spring & matthew gigax', 'rebecca spring, matthew gigax','rebecca , matthew ', 'rebecca spring and matthew gigax', 'rebecca, matthew', 'rebecca, matt', 'rebecca gigax matthew spring', 'matthew gigax rebecca spring'], points: 500 }
           ];
 
           const finalJeopardyQuestion = {
@@ -255,6 +257,7 @@
                 if (state.showResult !== undefined) setShowResult(state.showResult);
                 if (state.lightningQuestionIndex !== undefined) setLightningQuestionIndex(state.lightningQuestionIndex);
                 if (state.showJeopardyResult !== undefined) setShowJeopardyResult(state.showJeopardyResult);
+                if (state.jeopardyQuestionRevealed !== undefined) setJeopardyQuestionRevealed(state.jeopardyQuestionRevealed);
               }
             };
 
@@ -272,9 +275,10 @@
               currentQuestionIndex,
               showResult,
               lightningQuestionIndex,
-              showJeopardyResult
+              showJeopardyResult,
+              jeopardyQuestionRevealed
             });
-          }, [gameState, currentQuestionIndex, showResult, lightningQuestionIndex, showJeopardyResult, roomCode, isHost]);
+          }, [gameState, currentQuestionIndex, showResult, lightningQuestionIndex, showJeopardyResult, jeopardyQuestionRevealed, roomCode, isHost]);
 
           // Timer effects
           useEffect(() => {
@@ -320,7 +324,7 @@
           useEffect(() => {
             if (!isHost && gameState === 'lightning') {
               setLightningAnswer('');
-              setTimeRemaining(10);
+              setTimeRemaining(20);
               setShowResult(false);
             }
           }, [lightningQuestionIndex, gameState, isHost]);
@@ -425,7 +429,7 @@
             setGameState('lightning');
             setLightningQuestionIndex(0);
             setLightningAnswer('');
-            setTimeRemaining(10);
+            setTimeRemaining(20);
             setShowResult(false);
           };
 
@@ -446,7 +450,7 @@
             if (lightningQuestionIndex < lightningQuestions.length - 1) {
               setLightningQuestionIndex(prev => prev + 1);
               setLightningAnswer('');
-              setTimeRemaining(10);
+              setTimeRemaining(20);
               setShowResult(false);
             } else {
               startFinalJeopardy();
@@ -460,6 +464,14 @@
             setJeopardyAnswer('');
             setJeopardySubmitted(false);
             setShowJeopardyResult(false);
+            setJeopardyQuestionRevealed(false);
+            setJeopardyWagerLocked(false);
+          };
+
+          const lockWagerAndRevealQuestion = () => {
+            if (!isHost) return;
+            setJeopardyWagerLocked(true);
+            setJeopardyQuestionRevealed(true);
           };
 
           const submitFinalJeopardy = async () => {
@@ -627,7 +639,7 @@
                       <li>• <strong>Penalty System:</strong> Wrong answers deduct points (-25, -50, or -75)</li>
                       <li>• <strong>Lightning Round:</strong> 5 rapid-fire Insight Global questions (500pts each)</li>
                       <li>• <strong>Final Jeopardy:</strong> Wager your points on one ultimate GIS question</li>
-                      <li>• <strong>30-second timer</strong> per question (10 seconds for lightning round)</li>
+                      <li>• <strong>30-second timer</strong> per question (20 seconds for lightning round)</li>
                     </ul>
                   </div>
                 </div>
@@ -945,17 +957,24 @@
 
                   {!showJeopardyResult ? (
                     <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+                      {/* Always show category */}
                       <div className="mb-6 p-4 bg-purple-50 rounded-lg">
                         <p className="text-sm text-gray-600 mb-1">Category:</p>
                         <p className="text-2xl font-bold text-purple-600">{finalJeopardyQuestion.category}</p>
                       </div>
 
-                      <h2 className="text-xl font-bold text-gray-800 mb-6">
-                        {finalJeopardyQuestion.question}
-                      </h2>
-
-                      {!jeopardySubmitted ? (
+                      {/* Phase 1: Wager Selection (Before Question Revealed) */}
+                      {!jeopardyQuestionRevealed ? (
                         <div className="space-y-6">
+                          <div className="text-center p-6 bg-blue-50 rounded-lg">
+                            <p className="text-lg font-bold text-gray-800 mb-2">
+                              Make your wager now!
+                            </p>
+                            <p className="text-md text-gray-600">
+                              The question will be revealed after everyone has wagered.
+                            </p>
+                          </div>
+
                           <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
                               Your Current Score: {maxWager} points
@@ -969,37 +988,71 @@
                               max={maxWager}
                               value={jeopardyWager}
                               onChange={(e) => setJeopardyWager(Math.min(maxWager, Math.max(0, parseInt(e.target.value) || 0)))}
-                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
+                              disabled={jeopardyWagerLocked}
+                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">
-                              Your Answer:
-                            </label>
-                            <input
-                              type="text"
-                              value={jeopardyAnswer}
-                              onChange={(e) => setJeopardyAnswer(e.target.value)}
-                              placeholder="Type your answer here..."
-                              className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
-                            />
-                          </div>
-
-                          <button
-                            onClick={submitFinalJeopardy}
-                            disabled={!jeopardyAnswer.trim() || jeopardyWager < 0}
-                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all"
-                          >
-                            Submit Final Answer 🎯
-                          </button>
+                          {!jeopardyWagerLocked ? (
+                            <button
+                              onClick={() => setJeopardyWagerLocked(true)}
+                              disabled={jeopardyWager < 0}
+                              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+                            >
+                              Lock In Wager 🔒
+                            </button>
+                          ) : (
+                            <div className="text-center py-4">
+                              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                              <p className="text-lg font-bold text-gray-800">Wager Locked: {jeopardyWager} points</p>
+                              <p className="text-sm text-gray-500 mt-2">Waiting for question to be revealed...</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="text-center py-8">
-                          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                          <p className="text-2xl font-bold text-gray-800 mb-2">Answer Submitted!</p>
-                          <p className="text-lg text-gray-600">Wagered: {jeopardyWager} points</p>
-                          <p className="text-sm text-gray-500 mt-4">Waiting for gamemaster to reveal results...</p>
+                        /* Phase 2: Answer the Question (After Question Revealed) */
+                        <div className="space-y-6">
+                          <div className="p-4 bg-blue-50 rounded-lg mb-4">
+                            <p className="text-sm text-gray-600 mb-2">Your Wager:</p>
+                            <p className="text-2xl font-bold text-blue-600">{jeopardyWager} points</p>
+                          </div>
+
+                          <h2 className="text-xl font-bold text-gray-800 mb-6">
+                            {finalJeopardyQuestion.question}
+                          </h2>
+
+                          {!jeopardySubmitted ? (
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                  Your Answer:
+                                </label>
+                                <input
+                                  type="text"
+                                  value={jeopardyAnswer}
+                                  onChange={(e) => setJeopardyAnswer(e.target.value)}
+                                  placeholder="Type your answer here..."
+                                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
+                                  autoFocus
+                                />
+                              </div>
+
+                              <button
+                                onClick={submitFinalJeopardy}
+                                disabled={!jeopardyAnswer.trim()}
+                                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+                              >
+                                Submit Final Answer 🎯
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                              <p className="text-2xl font-bold text-gray-800 mb-2">Answer Submitted!</p>
+                              <p className="text-lg text-gray-600">Wagered: {jeopardyWager} points</p>
+                              <p className="text-sm text-gray-500 mt-4">Waiting for gamemaster to reveal results...</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1061,12 +1114,23 @@
                   )}
 
                   {isHost && !showJeopardyResult && (
-                    <button
-                      onClick={revealFinalJeopardy}
-                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
-                    >
-                      Reveal Results 🎭
-                    </button>
+                    <div className="space-y-4">
+                      {!jeopardyQuestionRevealed ? (
+                        <button
+                          onClick={lockWagerAndRevealQuestion}
+                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-yellow-600 hover:to-orange-600 transition-all"
+                        >
+                          Reveal Question 📜
+                        </button>
+                      ) : (
+                        <button
+                          onClick={revealFinalJeopardy}
+                          className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+                        >
+                          Reveal Results 🎭
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
