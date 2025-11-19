@@ -279,7 +279,13 @@
           useEffect(() => {
             if (gameState === 'playing' && !showResult && timeRemaining > 0) {
               const timer = setInterval(() => {
-                setTimeRemaining(prev => prev - 1);
+                setTimeRemaining(prev => {
+                  if (prev <= 1) {
+                    setShowResult(true);
+                    return 0;
+                  }
+                  return prev - 1;
+                });
               }, 1000);
               return () => clearInterval(timer);
             }
@@ -288,7 +294,13 @@
           useEffect(() => {
             if (gameState === 'lightning' && !showResult && timeRemaining > 0) {
               const timer = setInterval(() => {
-                setTimeRemaining(prev => prev - 1);
+                setTimeRemaining(prev => {
+                  if (prev <= 1) {
+                    setShowResult(true);
+                    return 0;
+                  }
+                  return prev - 1;
+                });
               }, 1000);
               return () => clearInterval(timer);
             }
@@ -701,20 +713,31 @@
                     )}
                   </div>
 
-                  {isHost && showResult && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        onClick={showScoreboard}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all"
-                      >
-                        Show Scoreboard 📊
-                      </button>
-                      <button
-                        onClick={nextQuestion}
-                        className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-green-600 hover:to-teal-600 transition-all"
-                      >
-                        {currentQuestionIndex < questions.length - 1 ? 'Next Question ➡️' : 'Lightning Round ⚡'}
-                      </button>
+                  {isHost && (
+                    <div className="space-y-4">
+                      {!showResult ? (
+                        <button
+                          onClick={() => setShowResult(true)}
+                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-yellow-600 hover:to-orange-600 transition-all"
+                        >
+                          Reveal Answers 🎭
+                        </button>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <button
+                            onClick={showScoreboard}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all"
+                          >
+                            Show Scoreboard 📊
+                          </button>
+                          <button
+                            onClick={nextQuestion}
+                            className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-green-600 hover:to-teal-600 transition-all"
+                          >
+                            {currentQuestionIndex < questions.length - 1 ? 'Next Question ➡️' : 'Lightning Round ⚡'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -844,6 +867,14 @@
                         >
                           Submit Answer 🚀
                         </button>
+                        {isHost && (
+                          <button
+                            onClick={() => setShowResult(true)}
+                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 transition-all"
+                          >
+                            Reveal Answer 🎭
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-4">
