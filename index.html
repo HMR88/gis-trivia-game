@@ -208,8 +208,8 @@
             { question: 'Where is Insight Global HQ located?', answer: 'Atlanta, GA', acceptableAnswers: ['atlanta', 'atlanta ga', 'atlanta, ga', 'atlanta georgia'], points: 500 },
             { question: 'Who is the GIS Program Director at Insight Global?', answer: 'Justyna Grinholc', acceptableAnswers: ['justyna grinholc', 'justyna', 'grinholc'], points: 500 },
             { question: 'Where are the other US Evergreen Delivery Centers? (Name all locations)', answer: 'Omaha (Nebraska), San Ramon (California), Bellevue (Washington) & Columbus (Ohio)', acceptableAnswers: ['omaha san ramon bellevue columbus', 'omaha, san ramon, bellevue, columbus'], points: 500, hint: 'Nebraska, California, Washington, Ohio' },
-            { question: 'How many members comprise the GIS team under the AES Division at Insight Global?', answer: '68', acceptableAnswers: ['68', 'sixty-eight', 'sixty eight'], points: 500 }
-	    { question: 'Who is our AGOL Administrator & who is our Solutions Architect?', answer: 'Rebecca Spring & Matthew Gygax', acceptableAnswers: ['Rebecca', 'Matthew', 'Matt'], points: 500 }
+            { question: 'How many members comprise the GIS team under the AES Division at Insight Global?', answer: '68', acceptableAnswers: ['68', 'sixty-eight', 'sixty eight'], points: 500 },
+            { question: 'Who is our AGOL Admin and who is our Solutions Architect?', answer: 'Rebecca Spring & Matthew Gigax', acceptableAnswers: ['rebecca spring matthew gigax', 'rebecca spring and matthew gigax', 'rebecca matthew', 'spring gigax', 'rebecca gigax matthew spring', 'matthew gigax rebecca spring'], points: 500 }
           ];
 
           const finalJeopardyQuestion = {
@@ -308,23 +308,29 @@
           }, [gameState, showResult, timeRemaining]);
 
           // Reset selectedAnswer and timer for non-hosts when question changes
-		  useEffect(() => {
-  			if (!isHost && gameState === 'playing') {
-    		  setSelectedAnswer(null);
-    		  setTimeRemaining(30);
-    		  setShowResult(false);
- 		    }
-		  }, [currentQuestionIndex, gameState, isHost]);
-
-
-          // Reset lightning answer when lightning question changes
           useEffect(() => {
-		    if (!isHost && gameState === 'lightning') {
+            if (!isHost && gameState === 'playing') {
+              setSelectedAnswer(null);
+              setTimeRemaining(30);
+              setShowResult(false);
+            }
+          }, [currentQuestionIndex, gameState, isHost]);
+
+          // Reset lightning answer and timer for non-hosts when lightning question changes
+          useEffect(() => {
+            if (!isHost && gameState === 'lightning') {
               setLightningAnswer('');
               setTimeRemaining(10);
               setShowResult(false);
             }
           }, [lightningQuestionIndex, gameState, isHost]);
+
+          // Also reset for hosts when question changes (for completeness)
+          useEffect(() => {
+            if (isHost && gameState === 'playing') {
+              setSelectedAnswer(null);
+            }
+          }, [currentQuestionIndex, isHost, gameState]);
 
           const generateRoomCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -619,7 +625,7 @@
                     <ul className="space-y-2">
                       <li>• <strong>Round 1:</strong> 30 GIS questions (Easy: 100pts, Medium: 200pts, Hard: 300pts)</li>
                       <li>• <strong>Penalty System:</strong> Wrong answers deduct points (-25, -50, or -75)</li>
-                      <li>• <strong>Lightning Round:</strong> 4 rapid-fire Insight Global questions (500pts each)</li>
+                      <li>• <strong>Lightning Round:</strong> 5 rapid-fire Insight Global questions (500pts each)</li>
                       <li>• <strong>Final Jeopardy:</strong> Wager your points on one ultimate GIS question</li>
                       <li>• <strong>30-second timer</strong> per question (10 seconds for lightning round)</li>
                     </ul>
@@ -839,7 +845,7 @@
                   <div className="text-center mb-8">
                     <Zap className="w-20 h-20 text-yellow-300 mx-auto mb-4 animate-pulse" />
                     <h1 className="text-5xl font-bold text-white mb-2">⚡ LIGHTNING ROUND ⚡</h1>
-                    <p className="text-2xl text-yellow-200">Question {lightningQuestionIndex + 1} of 4</p>
+                    <p className="text-2xl text-yellow-200">Question {lightningQuestionIndex + 1} of 5</p>
                     <p className="text-lg text-orange-200 mt-2">500 points • Type your answer!</p>
                   </div>
 
