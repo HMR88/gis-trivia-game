@@ -1,0 +1,1169 @@
+import React, { useState, useEffect } from 'react';
+import { Trophy, Users, MapPin, Clock, CheckCircle, XCircle, Crown, Target, Zap, DollarSign, AlertTriangle } from 'lucide-react';
+
+const GISTriviaChallengeGame = () => {
+  // Game states
+  const [gameState, setGameState] = useState('lobby'); // lobby, playing, scoreboard, lightning, final-jeopardy, finished
+  const [playerName, setPlayerName] = useState('');
+  const [playerId, setPlayerId] = useState('');
+  const [isHost, setIsHost] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
+  
+  // Game data
+  const [players, setPlayers] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [playerAnswers, setPlayerAnswers] = useState({});
+  
+  // Lightning round state
+  const [lightningQuestionIndex, setLightningQuestionIndex] = useState(0);
+  const [lightningAnswer, setLightningAnswer] = useState('');
+  
+  // Final Jeopardy state
+  const [jeopardyWager, setJeopardyWager] = useState(0);
+  const [jeopardyAnswer, setJeopardyAnswer] = useState('');
+  const [showJeopardyResult, setShowJeopardyResult] = useState(false);
+  const [jeopardySubmitted, setJeopardySubmitted] = useState(false);
+  const [allJeopardyAnswers, setAllJeopardyAnswers] = useState({});
+
+  // 30 GIS-focused questions with varying difficulty
+  const questions = [
+    // EASY QUESTIONS (1-10)
+    {
+      difficulty: 'Easy',
+      question: 'What does GIS stand for?',
+      options: ['Geographic Information System', 'Global Internet Service', 'Geological Inspection Software', 'Graphical Interface System'],
+      correct: 0,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'Which company created ArcGIS?',
+      options: ['Google', 'Microsoft', 'Esri', 'Oracle'],
+      correct: 2,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'What type of GIS data represents continuous surfaces like elevation?',
+      options: ['Vector data', 'Raster data', 'Tabular data', 'Network data'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'What does GPS stand for?',
+      options: ['Global Positioning System', 'Geographic Projection Service', 'General Purpose Software', 'Geodetic Point System'],
+      correct: 0,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'Which file format is commonly used for vector GIS data?',
+      options: ['.jpg', '.shp', '.mp3', '.doc'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'What is a feature class in GIS?',
+      options: ['A type of map projection', 'A collection of geographic features with the same geometry type', 'A Python programming class', 'A map scale measurement'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'Which geometry type is used to represent roads in a GIS?',
+      options: ['Point', 'Line (Polyline)', 'Polygon', 'Raster'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'What is the main purpose of a map legend?',
+      options: ['Show the map author', 'Explain map symbols and colors', 'Display coordinates', 'Set the map scale'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'Which ArcGIS product is cloud-based?',
+      options: ['ArcGIS Pro', 'ArcGIS Online', 'ArcCatalog', 'ArcMap'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+    {
+      difficulty: 'Easy',
+      question: 'What does a larger map scale (e.g., 1:1,000) show compared to a smaller scale (e.g., 1:100,000)?',
+      options: ['Less detail, larger area', 'More detail, smaller area', 'The same amount of detail', 'More detail, larger area'],
+      correct: 1,
+      points: 100,
+      penalty: -25
+    },
+
+    // MEDIUM QUESTIONS (11-20)
+    {
+      difficulty: 'Medium',
+      question: 'Which spatial analysis tool creates a zone of a specified distance around features?',
+      options: ['Clip', 'Union', 'Buffer', 'Dissolve'],
+      correct: 2,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'What is the EPSG code for the WGS84 geographic coordinate system?',
+      options: ['EPSG:3857', 'EPSG:4326', 'EPSG:2163', 'EPSG:3395'],
+      correct: 1,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'Which geoprocessing tool would you use to find features that overlap between two layers?',
+      options: ['Union', 'Intersect', 'Merge', 'Append'],
+      correct: 1,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'What is a geodatabase?',
+      options: ['A text file with coordinates', 'A database designed to store, query, and manage spatial and non-spatial data', 'A spreadsheet for geographic data', 'A map projection method'],
+      correct: 1,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'Which ArcGIS tool is used for optimizing routes and finding the shortest path?',
+      options: ['Spatial Join', 'Network Analyst', 'Near Tool', 'Geocoding Tool'],
+      correct: 1,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'What does LiDAR stand for?',
+      options: ['Light Detection and Ranging', 'Linear Data Recording', 'Location Information Database', 'Land Identification and Research'],
+      correct: 0,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'Which programming language is most commonly used with ArcGIS for automation?',
+      options: ['Java', 'C++', 'Python', 'Ruby'],
+      correct: 2,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'What is the primary purpose of ArcGIS Field Maps?',
+      options: ['Creating detailed cartographic layouts', 'Running Python scripts', 'Mobile data collection and field updates', 'Publishing web services'],
+      correct: 2,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'Which projection is commonly used for web mapping applications like Google Maps?',
+      options: ['Web Mercator (EPSG:3857)', 'Robinson', 'Albers Equal Area', 'Geographic WGS84'],
+      correct: 0,
+      points: 200,
+      penalty: -50
+    },
+    {
+      difficulty: 'Medium',
+      question: 'What is the purpose of a spatial join in GIS?',
+      options: ['To merge attribute tables', 'To combine features based on spatial relationships', 'To create new geometry', 'To change coordinate systems'],
+      correct: 1,
+      points: 200,
+      penalty: -50
+    },
+
+    // HARD QUESTIONS (21-30)
+    {
+      difficulty: 'Hard',
+      question: 'Which Python package is essential for ArcGIS Pro scripting and automation?',
+      options: ['geopandas', 'arcpy', 'shapely', 'fiona'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'What spatial relationship test determines if one feature completely contains another feature?',
+      options: ['Intersects', 'Within', 'Contains', 'Touches'],
+      correct: 2,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'Which geoprocessing tool merges adjacent features with the same attribute values into single features?',
+      options: ['Merge', 'Append', 'Dissolve', 'Union'],
+      correct: 2,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'What is the State Plane Coordinate System optimized for?',
+      options: ['Global mapping', 'Accuracy within individual US states', 'Polar regions', 'Ocean navigation'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'In ArcGIS Pro, what does the Model Builder tool allow you to do?',
+      options: ['Create 3D building models', 'Design and automate geoprocessing workflows', 'Build network datasets', 'Model terrain surfaces'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'What is topology in GIS?',
+      options: ['A type of map projection', 'Rules that define spatial relationships between features', 'Elevation data format', 'A coordinate system'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'Which analysis method would you use to determine the best location for a new facility based on multiple criteria?',
+      options: ['Hot Spot Analysis', 'Suitability Analysis', 'Cluster Analysis', 'Trend Analysis'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'What is the typical spatial resolution of Landsat 8 multispectral bands?',
+      options: ['10 meters', '15 meters', '30 meters', '60 meters'],
+      correct: 2,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'In utility GIS, what does a geometric network represent?',
+      options: ['Survey measurements', 'Connected infrastructure like pipes and wires', 'Satellite imagery', 'Administrative boundaries'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    },
+    {
+      difficulty: 'Hard',
+      question: 'What is the Haversine formula used for in GIS?',
+      options: ['Calculating map scale', 'Computing great-circle distance between latitude/longitude points', 'Converting coordinate systems', 'Determining elevation'],
+      correct: 1,
+      points: 300,
+      penalty: -75
+    }
+  ];
+
+  // Lightning Round Questions (4 Insight Global specific questions)
+  const lightningQuestions = [
+    {
+      question: 'Where is Insight Global HQ located?',
+      answer: 'Atlanta, GA',
+      acceptableAnswers: ['atlanta', 'atlanta ga', 'atlanta, ga', 'atlanta georgia'],
+      points: 500
+    },
+    {
+      question: 'Who is the GIS Program Director at Insight Global?',
+      answer: 'Justyna Grinholc',
+      acceptableAnswers: ['justyna grinholc', 'justyna', 'grinholc'],
+      points: 500
+    },
+    {
+      question: 'Where are the other US Evergreen Delivery Centers? (Name all locations)',
+      answer: 'Omaha (Nebraska), San Ramon (California), Bellevue (Washington) & Columbus (Ohio)',
+      acceptableAnswers: ['omaha san ramon bellevue columbus', 'omaha, san ramon, bellevue, columbus'],
+      points: 500,
+      hint: 'Nebraska, California, Washington, Ohio'
+    },
+    {
+      question: 'How many members comprise the GIS team under the AES Division at Insight Global?',
+      answer: '68',
+      acceptableAnswers: ['68', 'sixty-eight', 'sixty eight'],
+      points: 500
+    }
+  ];
+
+  // Final Jeopardy Question
+  const finalJeopardyQuestion = {
+    category: 'Advanced GIS Analysis',
+    question: 'This sophisticated spatial analysis technique combines multiple weighted criteria layers to identify optimal locations based on specific requirements, often used in site selection for facilities, conservation planning, and urban development. It typically involves raster overlay analysis with Boolean or fuzzy logic operators. What is this analysis method called?',
+    answer: 'Suitability Analysis (or Multi-Criteria Decision Analysis/MCDA)',
+    acceptableAnswers: ['suitability analysis', 'suitability', 'multi-criteria decision analysis', 'mcda', 'multi criteria analysis', 'weighted overlay analysis', 'weighted overlay']
+  };
+
+  // Timer effect
+  useEffect(() => {
+    if (gameState === 'playing' && !showResult && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleTimeUp();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [gameState, showResult, timeRemaining]);
+
+  // Lightning round timer (10 seconds)
+  useEffect(() => {
+    if (gameState === 'lightning' && !showResult && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleLightningTimeUp();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [gameState, showResult, timeRemaining, lightningQuestionIndex]);
+
+  // Handle timer expiration
+  const handleTimeUp = () => {
+    setShowResult(true);
+    // Record answer as incorrect if no selection made (no penalty for timeout)
+    if (selectedAnswer === null) {
+      const currentPlayer = players.find(p => p.id === playerId);
+      if (currentPlayer) {
+        setPlayerAnswers(prev => ({
+          ...prev,
+          [playerId]: { answer: null, correct: false, points: 0 }
+        }));
+      }
+    }
+  };
+
+  // Handle lightning round timeout
+  const handleLightningTimeUp = () => {
+    setShowResult(true);
+  };
+
+  // Generate room code
+  const generateRoomCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  };
+
+  // Create room
+  const createRoom = () => {
+    const code = generateRoomCode();
+    const id = Date.now().toString();
+    setRoomCode(code);
+    setPlayerId(id);
+    setIsHost(true);
+    setPlayers([{ id, name: playerName, score: 0 }]);
+    setGameState('lobby');
+  };
+
+  // Join room (simulated)
+  const joinRoom = (code) => {
+    const id = Date.now().toString();
+    setPlayerId(id);
+    setIsHost(false);
+    setPlayers(prev => [...prev, { id, name: playerName, score: 0 }]);
+  };
+
+  // Start game
+  const startGame = () => {
+    setGameState('playing');
+    setCurrentQuestionIndex(0);
+    setTimeRemaining(30);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setPlayerAnswers({});
+  };
+
+  // Select answer with penalty system
+  const selectAnswer = (index) => {
+    if (showResult || selectedAnswer !== null) return;
+    
+    setSelectedAnswer(index);
+    const currentQuestion = questions[currentQuestionIndex];
+    const isCorrect = index === currentQuestion.correct;
+    const points = isCorrect ? currentQuestion.points : currentQuestion.penalty; // Apply penalty for wrong answer
+
+    // Update player score
+    setPlayers(prev => prev.map(p => 
+      p.id === playerId 
+        ? { ...p, score: Math.max(0, p.score + points) } // Don't let score go below 0
+        : p
+    ));
+
+    // Record answer
+    setPlayerAnswers(prev => ({
+      ...prev,
+      [playerId]: { answer: index, correct: isCorrect, points }
+    }));
+
+    // Show result immediately
+    setShowResult(true);
+  };
+
+  // Next question (host only)
+  const nextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setTimeRemaining(30);
+      setSelectedAnswer(null);
+      setShowResult(false);
+      setPlayerAnswers({});
+      setGameState('playing');
+    } else {
+      // Move to lightning round
+      startLightningRound();
+    }
+  };
+
+  // Start Lightning Round
+  const startLightningRound = () => {
+    setGameState('lightning');
+    setLightningQuestionIndex(0);
+    setLightningAnswer('');
+    setTimeRemaining(10);
+    setShowResult(false);
+  };
+
+  // Submit lightning answer
+  const submitLightningAnswer = () => {
+    const currentLightning = lightningQuestions[lightningQuestionIndex];
+    const normalizedAnswer = lightningAnswer.toLowerCase().trim();
+    const isCorrect = currentLightning.acceptableAnswers.some(acceptable => 
+      normalizedAnswer.includes(acceptable) || acceptable.includes(normalizedAnswer)
+    );
+
+    const points = isCorrect ? currentLightning.points : -100; // Penalty for wrong answer
+
+    setPlayers(prev => prev.map(p => 
+      p.id === playerId 
+        ? { ...p, score: Math.max(0, p.score + points) }
+        : p
+    ));
+
+    setShowResult(true);
+  };
+
+  // Next lightning question
+  const nextLightningQuestion = () => {
+    if (lightningQuestionIndex < lightningQuestions.length - 1) {
+      setLightningQuestionIndex(prev => prev + 1);
+      setLightningAnswer('');
+      setTimeRemaining(10);
+      setShowResult(false);
+    } else {
+      startFinalJeopardy();
+    }
+  };
+
+  // Start Final Jeopardy
+  const startFinalJeopardy = () => {
+    setGameState('final-jeopardy');
+    setJeopardyWager(0);
+    setJeopardyAnswer('');
+    setJeopardySubmitted(false);
+    setShowJeopardyResult(false);
+    setAllJeopardyAnswers({});
+  };
+
+  // Submit Final Jeopardy wager and answer
+  const submitFinalJeopardy = () => {
+    const currentPlayer = players.find(p => p.id === playerId);
+    if (!currentPlayer || jeopardyWager > currentPlayer.score || jeopardyWager < 0) {
+      alert('Invalid wager! Must be between 0 and your current score.');
+      return;
+    }
+
+    setJeopardySubmitted(true);
+    
+    // Store this player's answer
+    setAllJeopardyAnswers(prev => ({
+      ...prev,
+      [playerId]: {
+        wager: jeopardyWager,
+        answer: jeopardyAnswer
+      }
+    }));
+  };
+
+  // Reveal Final Jeopardy results
+  const revealFinalJeopardy = () => {
+    // Check each player's answer
+    const updatedPlayers = players.map(player => {
+      const playerJeopardy = allJeopardyAnswers[player.id];
+      if (!playerJeopardy) return player;
+
+      const normalizedAnswer = playerJeopardy.answer.toLowerCase().trim();
+      const isCorrect = finalJeopardyQuestion.acceptableAnswers.some(acceptable => 
+        normalizedAnswer.includes(acceptable) || acceptable.includes(normalizedAnswer)
+      );
+
+      const scoreChange = isCorrect ? playerJeopardy.wager : -playerJeopardy.wager;
+      return {
+        ...player,
+        score: Math.max(0, player.score + scoreChange),
+        jeopardyResult: { correct: isCorrect, wager: playerJeopardy.wager, answer: playerJeopardy.answer }
+      };
+    });
+
+    setPlayers(updatedPlayers);
+    setShowJeopardyResult(true);
+  };
+
+  // Finish game
+  const finishGame = () => {
+    setGameState('finished');
+  };
+
+  // Show scoreboard
+  const showScoreboard = () => {
+    setGameState('scoreboard');
+  };
+
+  // Reset game
+  const resetGame = () => {
+    setGameState('lobby');
+    setCurrentQuestionIndex(0);
+    setLightningQuestionIndex(0);
+    setPlayers(prev => prev.map(p => ({ ...p, score: 0, jeopardyResult: null })));
+    setPlayerAnswers({});
+    setAllJeopardyAnswers({});
+  };
+
+  // Get sorted players
+  const getSortedPlayers = () => {
+    return [...players].sort((a, b) => b.score - a.score);
+  };
+
+  // Get current question
+  const currentQuestion = questions[currentQuestionIndex];
+  const currentLightning = lightningQuestions[lightningQuestionIndex];
+
+  // LOBBY SCREEN
+  if (gameState === 'lobby') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center mb-4">
+              <MapPin className="w-16 h-16 text-green-400" />
+            </div>
+            <h1 className="text-6xl font-bold text-white mb-2">GIS Trivia Challenge</h1>
+            <p className="text-2xl text-blue-200">Insight Global • Evergreen GIS Team</p>
+            <p className="text-lg text-blue-300 mt-4">30 Questions • Lightning Round • Final Jeopardy</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Join the Game</h2>
+            
+            <div className="space-y-4 mb-6">
+              <input
+                type="text"
+                placeholder="Enter your name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-lg"
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={createRoom}
+                  disabled={!playerName.trim()}
+                  className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Create Game (Gamemaster)
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const code = prompt('Enter room code:');
+                    if (code) {
+                      setRoomCode(code);
+                      joinRoom(code);
+                    }
+                  }}
+                  disabled={!playerName.trim()}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Join Game (Player)
+                </button>
+              </div>
+            </div>
+
+            {roomCode && (
+              <div className="border-t-2 border-gray-200 pt-6">
+                <div className="bg-blue-50 rounded-lg p-6 mb-4">
+                  <p className="text-sm text-gray-600 mb-2">Room Code:</p>
+                  <p className="text-3xl font-bold text-blue-600 tracking-wider">{roomCode}</p>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex items-center mb-3">
+                    <Users className="w-5 h-5 text-gray-600 mr-2" />
+                    <h3 className="text-lg font-semibold text-gray-700">Players ({players.length})</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {players.map((player, idx) => (
+                      <div key={player.id} className="flex items-center bg-gray-50 rounded-lg p-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                          {idx + 1}
+                        </div>
+                        <span className="font-medium text-gray-700">{player.name}</span>
+                        {player.id === playerId && (
+                          <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full">You</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {isHost && (
+                  <button
+                    onClick={startGame}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-orange-600 hover:to-red-600 transition-all"
+                  >
+                    Start Game! 🚀
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-blue-800 bg-opacity-50 rounded-lg p-6 text-white">
+            <h3 className="text-xl font-bold mb-3">Game Format:</h3>
+            <ul className="space-y-2">
+              <li>• <strong>Round 1:</strong> 30 GIS questions (Easy: 100pts, Medium: 200pts, Hard: 300pts)</li>
+              <li>• <strong>Penalty System:</strong> Wrong answers deduct points (-25, -50, or -75)</li>
+              <li>• <strong>Lightning Round:</strong> 4 rapid-fire Insight Global questions (500pts each)</li>
+              <li>• <strong>Final Jeopardy:</strong> Wager your points on one ultimate GIS question</li>
+              <li>• <strong>30-second timer</strong> per question (10 seconds for lightning round)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // PLAYING SCREEN
+  if (gameState === 'playing') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center">
+                  <Target className="w-6 h-6 text-blue-600 mr-2" />
+                  <span className="text-lg font-bold text-gray-800">
+                    Question {currentQuestionIndex + 1} / {questions.length}
+                  </span>
+                </div>
+                <div className={`flex items-center px-4 py-2 rounded-lg ${
+                  timeRemaining <= 10 ? 'bg-red-100' : 'bg-blue-100'
+                }`}>
+                  <Clock className={`w-5 h-5 mr-2 ${
+                    timeRemaining <= 10 ? 'text-red-600' : 'text-blue-600'
+                  }`} />
+                  <span className={`text-xl font-bold ${
+                    timeRemaining <= 10 ? 'text-red-600' : 'text-blue-600'
+                  }`}>
+                    {timeRemaining}s
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Your Score</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {players.find(p => p.id === playerId)?.score || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Question Card */}
+          <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+                  currentQuestion.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                  currentQuestion.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {currentQuestion.difficulty} • +{currentQuestion.points} / {currentQuestion.penalty}
+                </span>
+                <div className="flex items-center text-sm text-red-600">
+                  <AlertTriangle className="w-4 h-4 mr-1" />
+                  <span>Wrong answer: {currentQuestion.penalty} points</span>
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                {currentQuestion.question}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {currentQuestion.options.map((option, index) => {
+                const isSelected = selectedAnswer === index;
+                const isCorrect = index === currentQuestion.correct;
+                const showCorrectAnswer = showResult && isCorrect;
+                const showWrongAnswer = showResult && isSelected && !isCorrect;
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() => selectAnswer(index)}
+                    disabled={showResult || selectedAnswer !== null}
+                    className={`p-4 rounded-lg border-2 text-left font-medium transition-all ${
+                      showCorrectAnswer
+                        ? 'bg-green-100 border-green-500 text-green-800'
+                        : showWrongAnswer
+                        ? 'bg-red-100 border-red-500 text-red-800'
+                        : isSelected
+                        ? 'bg-blue-100 border-blue-500 text-blue-800'
+                        : 'bg-gray-50 border-gray-300 text-gray-800 hover:bg-gray-100'
+                    } ${showResult || selectedAnswer !== null ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{option}</span>
+                      {showCorrectAnswer && <CheckCircle className="w-6 h-6 text-green-600" />}
+                      {showWrongAnswer && <XCircle className="w-6 h-6 text-red-600" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {showResult && (
+              <div className={`mt-6 p-4 rounded-lg ${
+                selectedAnswer === currentQuestion.correct ? 'bg-green-50' :
+                selectedAnswer === null ? 'bg-gray-50' : 'bg-red-50'
+              }`}>
+                <p className="text-center font-bold text-lg text-gray-800">
+                  {selectedAnswer === currentQuestion.correct
+                    ? `✅ Correct! +${currentQuestion.points} points`
+                    : selectedAnswer === null
+                    ? '⏱️ Time\'s up! No points awarded'
+                    : `❌ Incorrect! ${currentQuestion.penalty} points • Correct: ${currentQuestion.options[currentQuestion.correct]}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Host Controls */}
+          {isHost && showResult && (
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={showScoreboard}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-purple-600 hover:to-pink-600 transition-all"
+              >
+                Show Scoreboard 📊
+              </button>
+              <button
+                onClick={nextQuestion}
+                className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-green-600 hover:to-teal-600 transition-all"
+              >
+                {currentQuestionIndex < questions.length - 1 ? 'Next Question ➡️' : 'Lightning Round ⚡'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // LIGHTNING ROUND SCREEN
+  if (gameState === 'lightning') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-900 via-orange-900 to-red-900 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <Zap className="w-20 h-20 text-yellow-300 mx-auto mb-4 animate-pulse" />
+            <h1 className="text-5xl font-bold text-white mb-2">⚡ LIGHTNING ROUND ⚡</h1>
+            <p className="text-2xl text-yellow-200">Question {lightningQuestionIndex + 1} of 4</p>
+            <p className="text-lg text-orange-200 mt-2">500 points • Type your answer!</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+            <div className="mb-6 flex justify-center">
+              <div className={`flex items-center px-6 py-3 rounded-lg ${
+                timeRemaining <= 5 ? 'bg-red-100' : 'bg-yellow-100'
+              }`}>
+                <Clock className={`w-6 h-6 mr-2 ${
+                  timeRemaining <= 5 ? 'text-red-600' : 'text-yellow-600'
+                }`} />
+                <span className={`text-3xl font-bold ${
+                  timeRemaining <= 5 ? 'text-red-600' : 'text-yellow-600'
+                }`}>
+                  {timeRemaining}s
+                </span>
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+              {currentLightning.question}
+            </h2>
+
+            {currentLightning.hint && (
+              <p className="text-center text-gray-600 mb-4 italic">
+                Hint: {currentLightning.hint}
+              </p>
+            )}
+
+            {!showResult ? (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={lightningAnswer}
+                  onChange={(e) => setLightningAnswer(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && submitLightningAnswer()}
+                  placeholder="Type your answer here..."
+                  className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:border-yellow-500 focus:outline-none text-lg"
+                  autoFocus
+                />
+                <button
+                  onClick={submitLightningAnswer}
+                  disabled={!lightningAnswer.trim()}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 transition-all"
+                >
+                  Submit Answer 🚀
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 rounded-lg p-6">
+                  <p className="text-lg font-bold text-gray-800 mb-2">Correct Answer:</p>
+                  <p className="text-xl text-blue-600">{currentLightning.answer}</p>
+                </div>
+                
+                {isHost && (
+                  <button
+                    onClick={lightningQuestionIndex < lightningQuestions.length - 1 ? nextLightningQuestion : startFinalJeopardy}
+                    className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+                  >
+                    {lightningQuestionIndex < lightningQuestions.length - 1 ? 'Next Question ⚡' : 'Final Jeopardy 🎯'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-yellow-800 bg-opacity-50 rounded-lg p-4 text-white text-center">
+            <p className="text-lg">Current Score: <strong>{players.find(p => p.id === playerId)?.score || 0}</strong> points</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FINAL JEOPARDY SCREEN
+  if (gameState === 'final-jeopardy') {
+    const currentPlayer = players.find(p => p.id === playerId);
+    const maxWager = currentPlayer?.score || 0;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <Crown className="w-20 h-20 text-yellow-300 mx-auto mb-4" />
+            <h1 className="text-5xl font-bold text-white mb-2">🎯 FINAL JEOPARDY 🎯</h1>
+            <p className="text-2xl text-purple-200">The Ultimate GIS Challenge</p>
+          </div>
+
+          {!showJeopardyResult ? (
+            <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+              <div className="mb-6 p-4 bg-purple-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Category:</p>
+                <p className="text-2xl font-bold text-purple-600">{finalJeopardyQuestion.category}</p>
+              </div>
+
+              <h2 className="text-xl font-bold text-gray-800 mb-6">
+                {finalJeopardyQuestion.question}
+              </h2>
+
+              {!jeopardySubmitted ? (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Your Current Score: {maxWager} points
+                    </label>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      How much do you want to wager? (0 - {maxWager})
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={maxWager}
+                      value={jeopardyWager}
+                      onChange={(e) => setJeopardyWager(Math.min(maxWager, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Your Answer:
+                    </label>
+                    <input
+                      type="text"
+                      value={jeopardyAnswer}
+                      onChange={(e) => setJeopardyAnswer(e.target.value)}
+                      placeholder="Type your answer here..."
+                      className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-lg"
+                    />
+                  </div>
+
+                  <button
+                    onClick={submitFinalJeopardy}
+                    disabled={!jeopardyAnswer.trim() || jeopardyWager < 0}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+                  >
+                    Submit Final Answer 🎯
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                  <p className="text-2xl font-bold text-gray-800 mb-2">Answer Submitted!</p>
+                  <p className="text-lg text-gray-600">Wagered: {jeopardyWager} points</p>
+                  <p className="text-sm text-gray-500 mt-4">Waiting for gamemaster to reveal results...</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-2xl p-8">
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-lg font-bold text-gray-800 mb-2">Correct Answer:</p>
+                  <p className="text-xl text-blue-600">{finalJeopardyQuestion.answer}</p>
+                </div>
+
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Results:</h3>
+                <div className="space-y-3">
+                  {players.map(player => {
+                    const result = player.jeopardyResult;
+                    if (!result) return null;
+
+                    return (
+                      <div
+                        key={player.id}
+                        className={`p-4 rounded-lg border-2 ${
+                          result.correct
+                            ? 'bg-green-50 border-green-500'
+                            : 'bg-red-50 border-red-500'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-gray-800">{player.name}</p>
+                            <p className="text-sm text-gray-600">Wagered: {result.wager} points</p>
+                            <p className="text-sm text-gray-600">Answer: {result.answer}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-2xl font-bold ${
+                              result.correct ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {result.correct ? `+${result.wager}` : `-${result.wager}`}
+                            </p>
+                            <p className="text-lg font-bold text-gray-800">
+                              Final: {player.score}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {isHost && (
+                <button
+                  onClick={finishGame}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-yellow-600 hover:to-orange-600 transition-all"
+                >
+                  Show Final Results 🏆
+                </button>
+              )}
+            </div>
+          )}
+
+          {isHost && !showJeopardyResult && (
+            <button
+              onClick={revealFinalJeopardy}
+              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+            >
+              Reveal Results 🎭
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // SCOREBOARD SCREEN
+  if (gameState === 'scoreboard') {
+    const sortedPlayers = getSortedPlayers();
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-5xl font-bold text-white mb-4">📊 Live Scoreboard</h1>
+            <p className="text-2xl text-blue-200">
+              Question {currentQuestionIndex + 1} of {questions.length} Complete
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+            <div className="space-y-3">
+              {sortedPlayers.map((player, idx) => (
+                <div
+                  key={player.id}
+                  className={`flex items-center justify-between p-4 rounded-lg ${
+                    idx === 0 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400' :
+                    idx === 1 ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-400' :
+                    idx === 2 ? 'bg-gradient-to-r from-orange-100 to-orange-50 border-2 border-orange-400' :
+                    'bg-gray-50 border-2 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                      idx === 0 ? 'bg-yellow-400 text-white' :
+                      idx === 1 ? 'bg-gray-300 text-white' :
+                      idx === 2 ? 'bg-orange-400 text-white' :
+                      'bg-gray-200 text-gray-600'
+                    }`}>
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 text-lg">{player.name}</p>
+                      {idx < 3 && (
+                        <p className="text-sm text-gray-600">
+                          {idx === 0 ? '🥇 First Place' : idx === 1 ? '🥈 Second Place' : '🥉 Third Place'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-gray-800">{player.score}</p>
+                    <p className="text-sm text-gray-600">points</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {isHost && (
+            <button
+              onClick={() => setGameState('playing')}
+              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+            >
+              Continue to Next Question ➡️
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // FINISHED SCREEN
+  if (gameState === 'finished') {
+    const sortedPlayers = getSortedPlayers();
+    const winner = sortedPlayers[0];
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <Trophy className="w-24 h-24 text-yellow-400 mx-auto mb-4 animate-bounce" />
+            <h1 className="text-6xl font-bold text-white mb-4">🎉 Game Over! 🎉</h1>
+            <p className="text-3xl text-yellow-300 mb-2">{winner.name} Wins!</p>
+            <p className="text-xl text-blue-200">Final Score: {winner.score} points</p>
+            <p className="text-lg text-purple-200 mt-4">Insight Global • Evergreen GIS Team</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-2xl p-8 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Final Standings</h2>
+            <div className="space-y-3">
+              {sortedPlayers.map((player, idx) => (
+                <div
+                  key={player.id}
+                  className={`flex items-center justify-between p-4 rounded-lg ${
+                    idx === 0 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-400' :
+                    idx === 1 ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-2 border-gray-400' :
+                    idx === 2 ? 'bg-gradient-to-r from-orange-100 to-orange-50 border-2 border-orange-400' :
+                    'bg-gray-50 border-2 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                      idx === 0 ? 'bg-yellow-400 text-white' :
+                      idx === 1 ? 'bg-gray-300 text-white' :
+                      idx === 2 ? 'bg-orange-400 text-white' :
+                      'bg-gray-200 text-gray-600'
+                    }`}>
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 text-lg">{player.name}</p>
+                      {idx < 3 && (
+                        <p className="text-sm text-gray-600">
+                          {idx === 0 ? '🥇 Gold Medal' : idx === 1 ? '🥈 Silver Medal' : '🥉 Bronze Medal'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-gray-800">{player.score}</p>
+                    <p className="text-sm text-gray-600">points</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {isHost && (
+            <button
+              onClick={resetGame}
+              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-6 py-4 rounded-lg font-bold text-xl hover:from-green-600 hover:to-teal-600 transition-all"
+            >
+              Play Again 🔄
+            </button>
+          )}
+
+          <div className="bg-blue-800 bg-opacity-50 rounded-lg p-6 text-white text-center mt-6">
+            <p className="text-xl mb-2">Thank you for playing! 🌍</p>
+            <p className="text-blue-200">Insight Global Evergreen GIS Team</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+};
+
+export default GISTriviaChallengeGame;
